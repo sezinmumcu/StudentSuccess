@@ -1,0 +1,1253 @@
+---
+title: "<center> Understanding Student Success <center>"
+author: "<center> Sezin Mumcu <center>"
+date: "<center> `r Sys.Date()` <center>"
+output:
+  html_document:
+    number_sections: yes
+    fig_caption: yes
+    toc: yes
+    fig_width: 7
+    fig_height: 5
+    theme: cosmo
+    highlight: tango
+    code_folding: hide
+  pdf_document:
+    toc: yes
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, 
+                      comment = " ", error = FALSE, fig.align = 'center')
+```
+
+# Introduction
+
+Student academic success is a complex phenomenon influenced by a multitude of factors, including individual characteristics, family backgrounds, and school environments (Mushtaq & Khan, 2012; Farooq et al., 2011). Yet, this serves as a crucial indicator of a student's future prospects, playing a pivotal role in personal and professional development (Steinmayr et al., 2015). The importance of academic success extends far beyond the classroom, influencing long-term life outcomes such as improved economic prospects, better health, reduced criminal activity, and increased social and civic engagement in adulthood. Furthermore, academic achievement acts as a critical mediator for social mobility, potentially breaking cycles of intergenerational poverty and contributing to overall societal progress (Ou & Reynolds, 2008).
+
+Despite extensive research, accurately predicting and enhancing student performance remains a significant challenge for educational institutions worldwide (York et al., 2015). However, the ability to predict and enhance student performance is crucial, as it enables early intervention strategies and personalized support, potentially mitigating educational inequalities and improving long-term outcomes (Hellas et al., 2018). Given this critical importance and the challenges in predicting academic success, this study seeks to address this gap in knowledge by conducting a comprehensive investigation into the determinants of exam scores, a widely recognized measure of academic achievement.
+
+Exam scores not only reflect a student's knowledge and skills but also serve as a critical determinant for future educational and career opportunities (Sackett et al., 2009). By identifying the key factors that influence exam performance, educational institutions can develop targeted interventions and strategies to improve student outcomes and foster an environment conducive to academic success (Mushtaq & Khan, 2012).
+
+The primary objective of this research is to improve overall student academic performance and exam scores across our educational institution. To achieve this, we will analyze a representative [dataset](https://www.kaggle.com/datasets/lainguyn123/student-performance-factors/data) with two main goals:
+
+1.  Identify the key factors that have the most significant impact on exam scores.
+
+2.  Provide data-driven recommendations to school administrators, teachers, and parents for enhancing student success.
+
+These goals translate into the following data science problems:
+
+1.  Predictive Modeling: Develop a machine learning model to predict exam scores based on available features, enabling early identification of at-risk students and facilitating timely interventions.
+
+2.  Feature Importance Analysis: Determine which factors have the strongest correlation with exam scores, guiding resource allocation and intervention strategies to address the most influential determinants of student performance.
+
+To address these research objectives, we propose a comprehensive methodology encompassing:
+
+1.  Data preparation: Cleaning and preprocessing the dataset, handling missing values and outliers, and encoding categorical variables.
+
+2.  Exploratory data analysis: Visualizing distributions and relationships between variables to identify initial patterns and correlations.
+
+3.  Model development: Splitting the data into training and testing sets, developing and comparing multiple regression models, and performing cross-validation to ensure model robustness.
+
+4.  Model interpretation and insights: Analyzing feature importance, interpreting model coefficients or decision rules, and developing actionable insights based on the model results.
+
+5.  Synthesis of findings: Translating results into clear, actionable recommendations for improving student performance, tailored for school administrators, teachers, and parents.
+
+This study draws its analytical power from advanced data science techniques, leveraging predictive modeling and feature importance analysis to unravel the complex relationships between various factors and student performance (Hussain et al., 2018). By harnessing the capabilities of machine learning algorithms and statistical methods, we can analyze large datasets and uncover patterns that may not be readily apparent through traditional analytical approaches. The application of these data science methodologies enables us to extract meaningful insights from our dataset, providing a robust foundation for evidence-based decision-making.
+
+The resulting data-driven insights will inform the development of tailored interventions to improve student outcomes, ultimately contributing to the goal of inclusive and equitable quality education, as outlined in the United Nations' Sustainable Development Goals (United Nations, 2015). Through this innovative approach, our study aims to bridge the gap between educational theory and practice, offering actionable recommendations grounded in rigorous data analysis. By identifying the key determinants of exam scores, this research will provide valuable insights to inform data-driven decision-making processes within schools, potentially guiding policy decisions and resource allocation at a larger scale (Mushtaq & Khan, 2012; Hanushek & Woessmann, 2017).
+
+# Data Preparation
+
+Data preprocessing is a fundamental step in data analysis, as it ensures the quality and integrity of the data for subsequent analyses (García et al., 2015). Real-world datasets often contain missing values, outliers, and inconsistencies that can introduce bias and errors if not addressed appropriately. Preprocessing techniques, such as handling missing data, encoding categorical variables, and identifying and treating outliers, are essential for transforming raw data into a clean and reliable format.
+
+## Reading the Data
+
+To start preparing the data, we load the necessary packages and read the dataset.
+
+```{r}
+# Load the necessary packages
+library(readr)
+library(ggplot2)
+library(GGally)
+library(ggcorrplot)
+library(stringr)
+library(pROC)
+library(liver)
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+library(caret)
+library(xgboost)
+```
+
+We will read the same dataset twice. The `original_dataset` will not be used. It will stay as the raw dataset, in case if referencing it is necessary. The `data` dataset will be the version we clean and use.
+
+```{r}
+# Read the dataset
+original_data <- read_csv('/Users/sezinmumcu/Desktop/Data Wrangling/studentperformancefactors.csv')
+data <- read_csv('/Users/sezinmumcu/Desktop/Data Wrangling/studentperformancefactors.csv')
+```
+
+Afterwards, we examine its structure, which provides a compact overview of the data types, variable names, and a glimpse of the values in each column.
+
+```{r}
+# See the structure of the dataset
+str(data)
+```
+
+The dataset is a table with 6,607 rows and 20 columns, containing various factors that affect student performance. Each column represents a different variable, such as `Hours_Studied`, `Attendance`, and `Parental_Involvement`. The data types include numeric values for continuous variables like `Hours_Studied` and `Exam_Score`, and character strings for categorical variables like `Parental_Involvement` and `School_Type`.
+
+We will change all variable names and data into low case characters for convenience.
+
+```{r}
+# Convert all variable names to lowercase
+names(data) <- tolower(names(data))
+
+# Convert all character data to lowercase
+data[] <- lapply(data, function(x) if (is.character(x)) tolower(x) else x)
+```
+
+Now, we will request the summary statistics of the data
+
+```{r}
+summary(data)
+```
+
+The maximum value for `exam.score` is 101, whereas the exam is graded out of 100. This could be an error during data entry. Since we cannot know the real score for these people, they will be removed.
+
+```{r}
+data <- data[data$exam_score <= 100, ]
+```
+
+## Missing Values
+
+Missing data can cause loss of statistical power, biased parameter estimates, and invalid inferences (Cheema, 2014). To avoid this, we first check if there's any missing values in our dataset.
+
+```{r}
+# Check for missing values in the dataset
+missing_values <- colSums(is.na(data))
+print(missing_values)
+```
+
+Three variables(`parental_education_level`, `teacher_quality`, and `distance_from_home`) has missing values. We first print the unique values in each, to define an imputation style.
+
+```{r}
+# Check the unique values of variables with missing values
+print(unique(data$parental_education_level))
+print(unique(data$distance_from_home))
+print(unique(data$teacher_quality))
+```
+
+We will compute the missing values by replacing them with the most frequent value. Since these variables are categorical variables, we will use the mode.
+
+```{r}
+# Function to calculate mode
+get_mode <- function(x) {
+  unique_x <- unique(na.omit(x))
+  unique_x[which.max(tabulate(match(x, unique_x)))]
+}
+
+# Impute missing values with mode
+data$parental_education_level[is.na(data$parental_education_level)] <- get_mode(data$parental_education_level)
+
+data$distance_from_home[is.na(data$distance_from_home)] <- get_mode(data$distance_from_home)
+
+data$teacher_quality[is.na(data$teacher_quality)] <- get_mode(data$teacher_quality)
+```
+
+## Label Encoding
+
+We will do will do label encoding to create new numerical variables from variables that are character strings. This is a necessary step to convert categorical variables into a numerical format, as many machine learning algorithms and statistical models work primarily with numerical data (Micci-Barreca, 2001).
+
+```{r}
+# For variables with 3 levels (Low, Medium, High)
+
+encode_ordinal <- function(x) {
+  factor(x, levels = c("low", "medium", "high"), labels = c(0, 1, 2), ordered = TRUE)
+}
+
+data$EN_parental_involvement <- encode_ordinal(data$parental_involvement)
+data$EN_access_to_resources <- encode_ordinal(data$access_to_resources)
+data$EN_motivation_level <- encode_ordinal(data$motivation_level)
+data$EN_family_income <- encode_ordinal(data$family_income)
+data$EN_teacher_quality <- encode_ordinal(data$teacher_quality)
+```
+
+```{r}
+# For binary variables
+
+encode_binary <- function(x) {
+  factor(x, levels = c("no", "yes"), labels = c(0, 1), ordered = TRUE)
+}
+
+data$EN_extracurricular_activities <- encode_binary(data$extracurricular_activities)
+data$EN_internet_access <- encode_binary(data$internet_access)
+data$EN_learning_disabilities <- encode_binary(data$learning_disabilities)
+```
+
+```{r}
+# For other variables 
+
+data$EN_school_type <- factor(data$school_type, levels = c("public", "private"), labels = c(0, 1), ordered = TRUE)
+
+data$EN_peer_influence <- factor(data$peer_influence, levels = c("negative", "neutral", "positive"), labels = c(0, 1, 2), ordered = TRUE)
+
+data$EN_parental_education_level <- factor(data$parental_education_level, levels = c("high school", "college", "postgraduate"), labels = c(0, 1, 2), ordered = TRUE) 
+
+data$EN_distance_from_home <- factor(data$distance_from_home, levels = c("far", "moderate", "near"), labels = c(0, 1, 2), ordered = TRUE) 
+
+data$EN_gender <- factor(data$gender, levels = c("male", "female"), labels = c(0, 1))
+```
+
+## Outliers
+
+Handling outliers is crucial in data preprocessing as outliers can significantly distort the results of data mining and machine learning algorithms, leading to incorrect findings (Larose & Larose, 2014). Outliers may arise due to various reasons and can skew statistical measures, resulting in biased models and inaccurate predictions if left unaddressed. Therefore, we will examine if there are any outliers, and if yes, how severe they are.
+
+```{r}
+# Creating box plots for numeric variables
+ggplot(data, aes(x = exam_score)) +
+  geom_boxplot(fill = "#0099f8")
+
+ggplot(data, aes(x = previous_scores)) +
+  geom_boxplot(fill = "#e74c3c")
+
+ggplot(data, aes(x = attendance)) +
+  geom_boxplot(fill = "#2ecc71")
+
+ggplot(data, aes(x = hours_studied)) +
+  geom_boxplot(fill = "#f39c12")
+
+ggplot(data, aes(x = tutoring_sessions)) +
+  geom_boxplot(fill = "#9b59b6")
+
+ggplot(data, aes(x = sleep_hours)) +
+  geom_boxplot(fill = "#34495e")
+
+ggplot(data, aes(x = physical_activity)) +
+  geom_boxplot(fill = "#1abc9e")
+```
+
+Based on these box plots, most of the variables do not show clear outliers, as the whiskers generally extend to the full range of the data. However, the `exam_score` plot shows potential low and high outliers, with some dots below the lower whisker and above the higher whisker. The `hours_studied` plot has possible high outliers, indicated by dots above the upper whisker. The `tutoring_sessions` plot is unusual, showing a single bar at 2 sessions with dots representing individual data points at higher values, which could be considered outliers.
+
+We will deepen the investigation by creating histograms with density plot. Histograms with overlaid density plots allow the simultaneous assessment of frequency patterns and probability density, hence, facilitating the identification of outliers, skewness, and multimodality in the dataset.
+
+```{r}
+# Function to create histogram with density plot
+create_histogram <- function(data, column) {
+  ggplot(data, aes(x = .data[[column]])) +
+    geom_histogram(aes(y = after_stat(density)), 
+                   bins = 30, 
+                   fill = "#69b3a2", 
+                   color = "#3a6351", 
+                   alpha = 0.7) +
+    geom_density(color = "#e63946", 
+                 linewidth = 1.2) +
+    theme_minimal() +
+    theme(
+      plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+      axis.title = element_text(size = 12),
+      axis.text = element_text(size = 10),
+      panel.grid.major = element_line(color = "#dcdcdc"),
+      panel.grid.minor = element_blank()
+    ) +
+    labs(
+      title = paste("Distribution of", column),
+      x = str_to_title(gsub("_", " ", column)),
+      y = "Density"
+    )
+}
+
+# Create histograms for each numeric column
+numeric_cols <- c("exam_score", "previous_scores", "attendance", "hours_studied", 
+                  "tutoring_sessions", "sleep_hours", "physical_activity")
+
+for (col in numeric_cols) {
+  print(create_histogram(data, col))
+}
+```
+
+These plots provide a more nuanced understanding of potential outliers. The `exam_score` distribution is approximately normal but slightly left-skewed, which aligns with the observation of potential low outliers in the box plot. The slightly left-skewed normal distribution charachteristic also makes the scores higher than 80 potential outliers. The `previous_scores` display a fairly uniform distribution with slight peaks, consistent with the absence of outliers in the box plot. The `attendance` distribution is relatively uniform across the range, explaining the lack of outliers in the box plot. The `hours_studied` distribution shows a roughly normal shape with a slight right skew, confirming the possibility of high outliers beyond 35-40 hours. The `tutoring_sessions` distribution is heavily right-skewed with discrete values, clarifying why higher session counts appeared as outliers in the box plot. The `sleep_hours` exhibits a multimodal distribution, which explains why the box plot didn't show outliers despite the presence of less common values at the extremes. Lastly, the `physical_activity` shows a multimodal distribution concentrated between 1-5, explaining the compact box without outliers.
+
+Lastly, we will create Q-Q plots for the numerical variables. Q-Q (Quantile-Quantile) plots are a powerful visual tool for assessing the normality of a dataset and identifying potential outliers by comparing the quantiles of the observed data against the quantiles of a theoretical normal distribution. This comparison is particularly valuable because many statistical methods assume normality, and departures from normality can significantly impact the validity of these methods. Therefore, these plots help to detect deviations from normality that may indicate the presence of outliers or non-normal data patterns.
+
+```{r}
+# Function to create Q-Q plot
+create_qqplot <- function(data, column) {
+  ggplot(data, aes(sample = .data[[column]])) +
+    stat_qq() +
+    stat_qq_line() +
+    theme_minimal() +
+    labs(title = paste("Q-Q Plot of", column))
+}
+
+# Create Q-Q plots for each numeric column
+for (col in numeric_cols) {
+  print(create_qqplot(data, col))
+}
+```
+
+The Q-Q plots provide deeper insight into the distributions and potential outliers for each variable. The `physical_activity`, `sleep_hours`, and `tutoring_sessions` show stepped patterns, indicating discrete values with some deviation at the extremes. The `previous_scores` and `attendance` display S-shaped curves, suggesting heavier tails than a normal distribution. The `hours_studied` closely follows the reference line, with slight deviations at the upper end.
+
+The `exam_score` Q-Q plot reveals a significant departure from normality, with a pronounced curve above the reference line at higher values, indicating a strong right skew and potential high outliers. This contrasts with the left skew observed in the histogram. This is probably due to the big influence of scores higher than 80. The histogram showed that there are not many students have a specific score above 80. However, the students might be evenly distributed in the 80-100 range, causing the curve in this plot. The lower end of the plot shows less deviation, indicating fewer low outliers than previously assumed.
+
+Regarding the handling of outliers, the decision should be made carefully for each variable. For `hours_studied`, `tutoring_sessions`, `physical_activity`, and `sleep_hours`, the extreme values likely represent genuine data points and should be retained. The `previous_scores` and `attendance` show relatively mild deviations that may represent natural variability. The `exam_score` distribution, while skewed, appears to represent a continuous range of student performance rather than clear outliers.
+
+However, especially the decision about `exam.scores` remain tricky. As clearly shown in the Q-Q plot, the normality assumption for exam scores is violated. This limits our options to develop a predictive model, as most of the statistical models assume Normality of Residuals in the target variable. To make an informed decision, we will statistically examine the outliers.
+
+```{r}
+# Calculate Q1, Q3, and IQR for exam_score
+Q1 <- quantile(data$exam_score, 0.25)
+Q3 <- quantile(data$exam_score, 0.75)
+IQR <- Q3 - Q1
+
+# Calculate the lower and upper bounds for outliers
+lower_bound <- Q1 - 1.5 * IQR
+upper_bound <- Q3 + 1.5 * IQR
+
+# Identify outliers
+outliers <- data$exam_score[data$exam_score < lower_bound | data$exam_score > upper_bound]
+
+# Print summary statistics
+cat("Summary of exam_score:\n")
+print(summary(data$exam_score))
+
+cat("\nOutlier boundaries:\n")
+cat("Lower bound:", lower_bound, "\n")
+cat("Upper bound:", upper_bound, "\n")
+
+cat("\nNumber of outliers:", length(outliers), "\n")
+
+if(length(outliers) > 0) {
+  cat("Outlier values:\n")
+  print(outliers)
+}
+
+```
+
+A total of 103 data points have been identified as outliers, representing 1.56% of the dataset. Given that this constitutes a relatively small proportion, the removal of these data points is unlikely to significantly impact the overall analysis. However, these outliers, while extreme, appear to reflect genuine high or low performers, suggesting that they represent valid observations rather than errors. As a result, we will retain all outliers and proceed with the development of multiple predictive models.
+
+The first model will be a traditional statistical approach, which may exhibit sensitivity to the presence of outliers. During this stage, we will re-evaluate the model’s assumptions and address any concerns regarding outliers and potential influential points. In contrast, the subsequent models will utilize more modern machine learning techniques, which typically impose fewer assumptions and demonstrate reduced sensitivity to outliers. All data points, including the outliers, will be incorporated into these models. Finally, we will compare the performance of the various models to assess their effectiveness.
+
+# Exploratory Data Analysis
+
+Exploratory Data Analysis (EDA) aims to gain preliminary insights into a dataset, reveal patterns, identify anomalies, and generate hypotheses for further investigation. This crucial step helps researchers understand the data's structure and characteristics, uncover potential relationships between variables, and inform subsequent statistical analyses. In our case, we will visually assess the relationships between the target variable `exam_score` and other variables to make informed decisions about which predictors to include in our model.
+
+The distribution of numerical columns is already investigated in the previous part. We will proceed with the distribution of categorical variables.
+
+```{r}
+ggplot(data, aes(x = parental_involvement)) +
+  geom_bar(fill = "#A8D8EA", color = "black") +
+  labs(title = "Parental Involvement Levels", x = "Parental Involvement", y = "Count")
+
+ggplot(data, aes(x = access_to_resources)) +
+  geom_bar(fill = "#C1E1C1", color = "black") +
+  labs(title = "Access to Resources", x = "Access to Resources", y = "Count")
+
+ggplot(data, aes(x = extracurricular_activities)) +
+  geom_bar(fill = "#E0BBE4", color = "black") +
+  labs(title = "Extracurricular Activities", x = "Extracurricular Activities", y = "Count")
+
+ggplot(data, aes(x = motivation_level)) +
+  geom_bar(fill = "#FFDAB9", color = "black") +
+  labs(title = "Motivation Levels", x = "Motivation Level", y = "Count")
+
+ggplot(data, aes(x = internet_access)) +
+  geom_bar(fill = "#FFB3BA", color = "black") +
+  labs(title = "Internet Access", x = "Internet Access", y = "Count")
+
+ggplot(data, aes(x = family_income)) +
+  geom_bar(fill = "#D5B895", color = "black") +
+  labs(title = "Family Income Levels", x = "Family Income", y = "Count")
+
+ggplot(data, aes(x = teacher_quality)) +
+  geom_bar(fill = "#B5EAD7", color = "black") +
+  labs(title = "Teacher Quality", x = "Teacher Quality", y = "Count")
+
+ggplot(data, aes(x = peer_influence)) +
+  geom_bar(fill = "#FFF5BA", color = "black") +
+  labs(title = "Peer Influence", x = "Peer Influence", y = "Count")
+
+ggplot(data, aes(x = school_type)) +
+  geom_bar(fill = "#E6E6FA", color = "black") +
+  labs(title = "School Type", x = "School Type", y = "Count")
+
+ggplot(data, aes(x = learning_disabilities)) +
+  geom_bar(fill = "#FFB6C1", color = "black") +
+  labs(title = "Learning Disabilities", x = "Learning Disabilities", y = "Count")
+
+ggplot(data, aes(x = parental_education_level)) +
+  geom_bar(fill = "#AFEEEE", color = "black") +
+  labs(title = "Parental Education Level", x = "Parental Eductaion Level", y = "Count")
+
+ggplot(data, aes(x = distance_from_home)) +
+  geom_bar(fill = "#C1CDC1", color = "black") +
+  labs(title = "Distance from Home", x = "Distance from Home", y = "Count")
+```
+
+These bar charts offer valuable insights into factors influencing student performance. Parental involvement, resource access, motivation levels, and teacher quality display similar distributions, with most students in the "medium" category, followed by "high," and "low." Extracurricular participation is fairly balanced, with a slight majority of students involved. Internet access is widespread among the student population. Family income levels are predominantly "low" and "medium," with fewer students in the "high" income bracket. Peer influence is mostly "neutral" or "positive," though a significant minority experience "negative" peer influence. School type shows a clear majority of students in public schools. Learning disabilities are present in a minority of students, but still a significant number. Parental education levels are predominantly high school, followed by college, with postgraduate education being the least common. Distance from home shows most students live near or at a moderate distance from school, with fewer living far away.
+
+These distributions reveal that while many students have moderate levels of support and resources, there are notable variations across factors. Key areas of concern include:
+
+-   Negative peer influence affects nearly 25% of students.
+
+-   Low motivation levels are present in almost 33% of students.
+
+-   Approximately 25% of students have limited access to resources.
+
+-   Roughly 25% of students experience low parental involvement.
+
+-   More than 75% of students have low to medium family income, causing potential socioeconomic challenges.
+
+-   About 15% of students have learning disabilities, indicating a substantial population requiring specialized support.
+
+These findings suggest that, a considerable amount of the student population may be at risk in various contexts. Targeted interventions and support systems might be needed, to address these challenges and improve overall student outcomes.
+
+We will use violin plots for `access_to_resources`, `motivation_level`, and `peer_influence`, in relation to `exam_score`, to better illustrate the relationships.
+
+```{r}
+# Violin plot for access to resources
+ggplot(data, aes(x = access_to_resources, y = exam_score, fill = access_to_resources)) +
+  geom_violin() +
+  geom_boxplot(width = 0.1, fill = "white") +
+  scale_fill_brewer(palette = "Set1") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = "none") +
+  labs(title = "Exam Score Distribution by Access to Resources", 
+       x = "Access to Resources", y = "Exam Score")
+
+# Violin plot for motivation level
+ggplot(data, aes(x = motivation_level, y = exam_score, fill = motivation_level)) +
+  geom_violin() +
+  geom_boxplot(width = 0.1, fill = "white") +
+  scale_fill_brewer(palette = "Set2") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = "none") +
+  labs(title = "Exam Score Distribution by Motivation Level", 
+       x = "Motivation Level", y = "Exam Score")
+
+# Violin plot for peer influence
+ggplot(data, aes(x = peer_influence, y = exam_score, fill = peer_influence)) +
+  geom_violin() +
+  geom_boxplot(width = 0.1, fill = "white") +
+  scale_fill_brewer(palette = "Set3") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = "none") +
+  labs(title = "Exam Score Distribution by Peer Influence", 
+       x = "Peer Influence", y = "Exam Score")
+```
+
+These violin plots provide insights into the distribution of exam scores across different factors. For access to resources, students with high access show a slightly higher median score and a more concentrated distribution around the median, while those with low and medium access have wider distributions. Motivation levels appear to have a clear impact on exam scores, with highly motivated students showing a higher median score and a more compact distribution skewed towards higher scores. Low and medium motivation levels have lower median scores and more spread-out distributions. Peer influence shows an interesting trend where positive peer influence is associated with a slightly higher median score and a more compact distribution, while negative and neutral influences have lower medians and wider distributions. Across all three factors, there's considerable overlap in score ranges, indicating that while these factors do influence exam performance, they are not the sole determinants.
+
+We will now investigate the role of gender in motivation levels. Then, we will investigate the role of study hours, attendance, and previous scores, while considering the gender differences.
+
+```{r}
+# Bar chart stacked by gender
+ggplot(data, aes(x = motivation_level, fill = gender)) +
+  geom_bar(position = "stack") +
+  labs(title = "Motivation Level Distribution by Gender", x = "School Type", y = "Count")
+```
+
+The chart illustrates that the proportion of females to males remains fairly consistent across all motivation levels, suggesting that gender may not be a significant factor in determining motivation levels in this dataset.
+
+```{r}
+ggplot(data, aes(x = hours_studied, y = exam_score, colour = gender)) +
+  geom_point(alpha = 0.5) +
+  scale_color_manual(values = c("blue", "pink")) +
+  geom_smooth(method = "lm", color = "red") +
+  labs(title = "Hours Studied vs Exam Score", x = "Hours Studied", y = "Exam Score")
+
+ggplot(data, aes(x = attendance, y = exam_score, colour = gender)) +
+  geom_point(alpha = 0.5) +
+  scale_color_manual(values = c("blue", "pink")) +
+  geom_smooth(method = "lm", color = "red") +
+  labs(title = "Attendance vs Exam Score", x = "Attendance", y = "Exam Score")
+
+ggplot(data, aes(x = previous_scores, y = exam_score, colour = gender)) +
+  geom_point(alpha = 0.5) +
+  scale_color_manual(values = c("blue", "pink")) +
+  geom_smooth(method = "lm", color = "red") +
+  labs(title = "Previous Scores vs Exam Score", x = "Previous Scores", y = "Exam Score")
+```
+
+All three plots show positive correlations with exam scores, but to varying degrees. Hours studied and attendance demonstrate stronger positive relationships with exam scores, as evidenced by steeper trend lines, suggesting that increased study time and better attendance generally lead to higher exam performance. Previous scores also show a positive correlation with current exam scores, but the relationship appears weaker, indicated by a flatter trend line. Notably, there are no apparent significant gender differences in these relationships, as the distribution of data points for males and females is similar across all plots.
+
+We will investigate the relationship between `hour_studied` and `exam_scores` further, by considering the difference in sleep hours.
+
+```{r}
+ggplot(data, aes(x = hours_studied, y = exam_score, size = sleep_hours)) +
+  geom_point(alpha = 0.5) +
+  labs(title = "Bubble Plot: Hours Studied vs Exam Score", x = "Hours Studied", y = "Exam Score", size = "Sleep Hours")
+```
+
+Students achieving the highest exam scores (above 90) tend to have larger bubbles, indicating more sleep hours (8-10 hours). This suggests that adequate sleep plays a crucial role in top academic performance, even when study hours vary. In the mid-range of exam scores (60-80), there's a mix of bubble sizes, implying that sleep patterns vary widely among average performers. Interestingly, even with high study hours, students with smaller bubbles (indicating less sleep) rarely achieve top scores, highlighting the potential negative impact of sleep deprivation on exam performance. The plot also shows that students with very low study hours generally have poor exam scores, regardless of sleep duration. Hence, balancing study time with sufficient sleep for optimal academic performance seems crucial, suggesting that sleep might be as crucial as study hours in determining exam success.
+
+We will end the EDA with a correlation matrix.
+
+```{r}
+# Converting encoded variables from ordered factors to numeric 
+data$N_parental_involvement <- as.numeric(data$EN_parental_involvement)
+data$N_access_to_resources <- as.numeric(data$EN_access_to_resources)
+data$N_motivation_level <- as.numeric(data$EN_motivation_level)
+data$N_family_income <- as.numeric(data$EN_family_income)
+data$N_teacher_quality <- as.numeric(data$EN_teacher_quality)
+data$N_extracurricular_activities <- as.numeric(data$EN_extracurricular_activities)
+data$N_internet_access <- as.numeric(data$EN_internet_access)
+data$N_learning_disabilities <- as.numeric(data$EN_learning_disabilities)
+data$N_school_type <- as.numeric(data$EN_school_type)
+data$N_peer_influence <- as.numeric(data$EN_peer_influence)
+data$N_parental_education_level <- as.numeric(data$EN_parental_education_level)
+data$N_distance_from_home <- as.numeric(data$EN_distance_from_home)
+```
+
+```{r}
+# Creating the correlation matrix
+
+variable_list = c("N_parental_involvement", "N_access_to_resources", "N_motivation_level",
+                  "N_family_income", "N_teacher_quality", "N_extracurricular_activities",
+                  "N_internet_access", "N_learning_disabilities", "N_school_type",
+                  "N_peer_influence", "N_parental_education_level", "N_distance_from_home", 
+                  "hours_studied","attendance", "sleep_hours","previous_scores", 
+                  "tutoring_sessions", "physical_activity", "exam_score")
+
+cor_matrix = cor(data[, variable_list])
+
+ggcorrplot(cor_matrix,
+           hc.order = TRUE,
+           type = "lower",
+           lab = TRUE,
+           lab_size = 2,  # Further decreased label size
+           tl.cex = 5,  # Further decreased top-left label size
+           tl.srt = 45,
+           outline.color = "black",
+           insig = "blank",
+           colors = c("#6C5B7B", "white", "#C06C84"),
+           ggtheme = ggplot2::theme_minimal(),
+           pch = 16,
+           pch.cex = 3,
+           show.legend = TRUE)
+```
+
+The correlation matrix shows that `attendance` and `hours_studied` have moderate correlation with `exam_score`. The `previous_scores`, `EN_access_to_resources`, `tutoring_sessions`, and `EN_parental_involvement` have small correlation with the target variable. The rest of the variables do not show a substantial correlation with `exam_score` (all have correlations very close to 0).
+
+Therefore, we choose the following variables as predictors: `attendance`, `hours_studied`, `exam_score`, `previous_scores`, `EN_access_to_resources`, `tutoring_sessions`, `EN_parental_involvement`. We then form the following hypotheses:
+
+$H_0$: For each predictor, there is no significant relationship between the predictor variable and exam score.
+
+$H_a$: For each predictor, there is a significant relationship between the predictor variable and exam score.
+
+# Data Preparation for Modeling
+
+As mentioned previously, the aim of this analysis is to predict exam scores using a set of predictor variables. Our exploratory data analysis and data cleaning process revealed the multifaceted nature of the dataset, characterized by complex relationships between variables and the presence of several outliers. Given these insights, we will develop and evaluate multiple predictive models to capture the nuances in the data. By comparing their performance, we will select the most effective model for our final prediction task.
+
+We will use two linear regression models, multiple linear regression and stepwise regression, one non-linear model, decision tree regressor, and two tree-based ensemble models, random forest and gradient boosting machines (XGBoost). The stepwise regression will be used as model refinement of multiple linear regression.
+
+```{r}
+# Partitioning 
+
+set.seed(42)
+
+data_sets = partition(data = data, prob = c(0.8, 0.2))
+
+train_set = data_sets$part1
+test_set  = data_sets$part2
+```
+
+```{r}
+# Validating the partition
+
+t.test(train_set$exam_score, test_set$exam_score)
+```
+
+The null hypothesis is not rejected at $\alpha=0.05$, with a p-value of 0.7676. The proportions do not significantly differ between each other. Therefore, the he partitioning process has successfully split the dataset into representative subsets that adequately capture the underlying distribution.
+
+# Modeling
+
+## Training the Models with the Training Dataset
+
+The following formula will be used in all models. The formula contains the chosen predictors.
+
+```{r}
+formula <- exam_score ~ (attendance + hours_studied + previous_scores + 
+                        EN_access_to_resources +tutoring_sessions + EN_parental_involvement)
+```
+
+### Multiple Linear Regression
+
+The multiple regression model and the stepwise regression model provides the following formula:
+
+$$ \hat{y} = b_0 + b_1 x_1 + b_2 x_2 + b_3x_3 + b_4x_4 + b_5x_5 + b_6x_6 $$
+
+Before implementing the models, the assumptions of normality of residuals, and homoscedasticity will be checked. The assumption of multicollinearity seemed to be met, as the correlation matrix did not reveal high correlations between predictors.
+
+```{r}
+linear_training_model <- lm(formula, data = train_set)
+
+plot(linear_training_model)
+```
+
+The diagnostic plots reveal violations of the assumptions of normality of residuals and homoscedasticity, which are fundamental to the validity of linear regression models. Furthermore, the presence of outliers and influential points, as seen in the plots, suggests potential distortions in the model's parameter estimates (Cook, 1977). To address these issues and enhance the model's robustness, a data refinement process is proposed, employing established heuristics in statistical literature. Specifically, the implementation of Cook's Distance criterion, using the 4/n threshold (where n represents the sample size), aims to identify and potentially exclude observations exerting disproportionate influence on the regression coefficients (Cook & Weisberg, 1982). Additionally, the standardized residuals criterion, with a focus on values exceeding the \|3\| threshold, will be applied to isolate potential outliers that may be unduly affecting the model's fit (Stevens, 1984).
+
+```{r}
+# Influential points: 
+
+# Calculate Cook's Distance
+train_cooksd <- cooks.distance(linear_training_model)
+
+# Set a threshold for Cook's Distance (4/n rule of thumb)
+train_cutoff <- 4 / nrow(train_set)
+
+# Identify influential points (those with Cook's Distance > cutoff)
+train_influential_points <- which(train_cooksd > train_cutoff)
+
+# Print the influential points
+print(train_influential_points)
+```
+
+```{r}
+# Remove influential points from the data
+linear_train_set <- train_set[-train_influential_points, ]
+
+# Refit the linear model without the influential points
+clean_linear_training_model <- lm(formula, data = linear_train_set)
+```
+
+```{r}
+# Outliers:
+
+# Calculate standardized residuals
+train_resid <- rstandard(clean_linear_training_model)
+
+# Identify observations with standardized residuals > 3 or < -3
+train_outliers <- which(abs(train_resid) > 3)
+
+# Print the outliers
+print(train_outliers)
+```
+
+```{r}
+# Remove outliers from the data
+linear_train_set <- linear_train_set[-train_outliers, ]
+
+# Refit the linear model without the outliers
+clean_linear_training_model <- lm(formula, data = linear_train_set)
+
+# Plot the new diagnostics
+plot(clean_linear_training_model)
+```
+
+The dataset now meets the required assumptions. The linear regression models will be implemented.
+
+```{r}
+train_linear_reg = lm(formula, data = linear_train_set)
+
+summary(train_linear_reg)
+```
+
+The linear regression model was fitted to predict the outcome based on several predictors in the `linear_train_set`. The residuals indicate the distribution of errors, with a median close to 0. All predictors except for the quadratic term of parental involvement (`EN_parental_involvement.Q`) are statistically significant at a high level (p-values \< 2e-16), as indicated by the stars in the significance codes. The model explains about 90.17% of the variance in the outcome (R-squared = 0.9017), with a small standard error of 1.047 for the residuals, indicating a good model fit. The F-statistic is highly significant (p-value \< 2.2e-16), suggesting that the overall model is strongly predictive.
+
+#### Model refinement: Stepwise Linear Regression
+
+Stepwise regression helps refine the model by selecting the most important predictors, often resulting in a simpler model that retains most of its explanatory power. This method balances model simplicity with predictive accuracy, creating more interpretable statistical models.
+
+```{r}
+# Perform stepwise selection
+train_linear_stepwise <- step(clean_linear_training_model, direction = "both")
+```
+
+```{r}
+# View the selected model
+summary(train_linear_stepwise)
+```
+
+Compared to the previous model, the stepwise selection process has not changed the included variables or their significance, but it has confirmed that all predictors are essential for maintaining the model's performance. Thus, while the structure of the model remains the same, the stepwise selection process reinforces that eliminating even seemingly less significant variables, like the quadratic term for EN_parental_involvement, would result in a poorer fit. Overall, the model's explanatory power (R-squared = 90.17%) and residual standard error (1.047) are consistent with the original model, suggesting that it remains highly predictive and robust with no substantial improvement or deterioration in performance.
+
+### Decision Tree Regressor
+
+A decision tree regressor is a non-parametric supervised learning method used for regression tasks. It works by recursively splitting the feature space into regions, creating a tree-like structure where each leaf node represents a predicted value. The algorithm aims to minimize the variance within each region, making predictions based on the mean target value of the samples in a leaf. Decision tree regressors are interpretable, handle non-linear relationships well, and require minimal data preprocessing.
+
+```{r}
+set.seed(42)
+
+# Fit the decision tree model
+dt_model <- rpart(formula = formula, data = train_set, method = "anova")
+
+# Print the summary of the model
+print(dt_model)
+
+# Plot the decision tree
+rpart.plot(dt_model)
+```
+
+The decision tree model for predicting exam scores, based on 5257 observations, has 7 decision nodes and 8 leaves. The CART algorithm primarily selected two predictors: attendance and hours studied, with attendance being the most important as it forms the root node and appears in multiple splits. The tree's structure reveals that higher attendance and more study hours generally lead to better exam scores. The first major split occurs at 82.5% attendance, with students above this threshold scoring higher on average (69.46 vs 65.53). Subsequent splits on study hours further refine predictions, resulting in 8 distinct predictions of exam scores. The highest-performing group (average score 72.74) has attendance ≥ 94.5% and study hours ≥ 21.5, while the lowest-performing group (average score 62.98) has attendance \< 69.5% and study hours \< 20.5. This model emphasizes the importance of both regular class attendance and dedicated study time in achieving higher exam scores, providing a clear, hierarchical structure of how these factors interact to influence academic performance.
+
+#### Model refinement: Cross Validation
+
+Performing cross-validation is crucial as it evaluates the model's performance and generalization ability on unseen data, mitigating overfitting risks. It provides a reliable estimate of predictive performance by averaging across multiple data subsets. Cross-validation enables hyperparameter tuning for optimal configuration and identifies potential data issues or biases. Additionally, it offers valuable insights into variable importance and data similarities, aiding model interpretation and understanding underlying relationships. To improve the decision tree regressor, we will cross-validate it.
+
+```{r}
+set.seed(42)
+
+# Perform cross-validation
+printcp(dt_model)
+
+# Plot cross-validation results
+plotcp(dt_model)
+
+# Prune the tree based on the optimal cp value
+optimal_cp <- dt_model$cptable[which.min(dt_model$cptable[,"xerror"]),"CP"]
+pruned_model <- prune(dt_model, cp = optimal_cp)
+
+# Plot the pruned decision tree
+rpart.plot(pruned_model)
+```
+
+The model, again, utilized the variables attendance and hours_studied for tree construction. It had a root node error of 14.82. The complexity parameter (CP) table indicates that with each split, the relative error decreased, with the initial CP value of 0.255852 and a final CP of 0.010000 after seven splits. The cross-validated error (xerror) and its standard deviation (xstd) suggest the model's performance, with the lowest error being approximately 0.55649. This indicates how well the tree generalizes to unseen data.
+
+### Random Forest Regressor
+
+A random forest regressor is an ensemble learning method that combines multiple decision trees to create a more robust and accurate predictive model. It works by constructing numerous decision trees on random subsets of the training data and features, then averaging their predictions. This approach helps to reduce overfitting and improve generalization. Random forests are known for their high accuracy, ability to handle high-dimensional data, and resistance to outliers and noise.
+
+```{r}
+set.seed(42)
+rf <- randomForest(formula, data=train_set, importance=TRUE, proximity=TRUE)
+```
+
+```{r}
+print(rf)
+```
+
+The Random Forest regression model consists of 500 decision trees, with 2 variables randomly sampled as candidates at each split. The model's performance is indicated by its Mean Squared Error (MSE) of 5.320977, which represents the average squared difference between predicted and actual exam scores. The model explains 64.1% of the variance in the target variable, suggesting a moderate to good fit. 
+
+#### Model refinement: Cross Validation
+
+Again, to improve our initial random forest regressor, we will cross-validate it with 10 folds.
+
+```{r}
+set.seed(42)
+
+# Set the number of folds for cross-validation
+num_folds <- 10
+
+# Create a control object for cross-validation
+ctrl <- trainControl(method = "cv",
+                     number = num_folds,
+                     verboseIter = TRUE)
+
+# Fit the random forest model with cross-validation
+rf <- train(formula,
+      data = train_set,
+      method = "rf",
+      importance = TRUE,
+      proximity = TRUE,
+      trControl = ctrl)
+
+# Print the cross-validation results
+print(rf)
+```
+
+The Random Forest model was trained on 5,257 samples with 6 predictors, using 10-fold cross-validation to tune the mtry parameter (the number of variables randomly sampled as candidates at each split). The best performance was achieved with mtry = 5, which yielded the lowest RMSE (Root Mean Square Error) of 2.312262. This model explained approximately 63.94% of the variance (R-squared = 0.6394090) in the exam scores and had a Mean Absolute Error (MAE) of 1.191807. Compared to the initial model with mtry = 2, the performance improved slightly, as increasing mtry to 5 allowed for better variable selection without overfitting. Further increases in mtry led to a slight degradation in performance, suggesting that considering fewer variables at each split leads to better generalization. While the model captures non-linear interactions and relationships, the R-squared value indicates a moderate-to-good fit, though it is slightly lower than the 64.1% variance explained in the original Random Forest model, which used 500 trees. 
+
+### Gradient Boosting Machine (XGBoost)
+
+XGBoost (Extreme Gradient Boosting) is a popular and efficient machine learning algorithm used for regression and classification tasks. It is an implementation of the gradient boosting decision tree algorithm, which produces a prediction model in the form of an ensemble of weak prediction models, typically decision trees. XGBoost builds the model in a greedy, additive fashion by continually adding new trees that predict the residuals or errors of the prior trees. It is known for its parallelization, efficient handling of sparse data, and remarkable predictive performance, making it a go-to choice for many data science competitions and real-world applications. We will also apply XGBoost to our dataset.
+
+```{r}
+set.seed(42)
+
+# Create the model matrix (independent variables) for training and test sets
+train_matrix <- model.matrix(formula, data = train_set)[,-1]  # Remove the intercept column
+test_matrix  <- model.matrix(formula, data = test_set)[,-1]
+
+# Extract the dependent variable (target variable) for both train and test sets
+train_labels <- train_set$exam_score
+test_labels  <- test_set$exam_score
+```
+
+```{r}
+# Convert the data to xgboost DMatrix format
+set.seed(42)
+dtrain <- xgb.DMatrix(data = train_matrix, label = train_labels)
+dtest  <- xgb.DMatrix(data = test_matrix, label = test_labels)
+```
+
+```{r}
+# Set XGBoost parameters for regression
+
+set.seed(42)
+
+params <- list(
+  objective = "reg:squarederror",  # Objective for regression
+  eval_metric = "rmse",            # Root Mean Squared Error as evaluation metric
+  eta = 0.1,                       # Learning rate
+  max_depth = 6,                   # Maximum depth of a tree
+  subsample = 0.8,                 # Subsample ratio of the training instances
+  colsample_bytree = 0.8           # Subsample ratio of columns when constructing each tree
+)
+
+# Number of boosting rounds
+nrounds <- 100
+
+# Train the XGBoost model
+xgb_model <- xgb.train(
+  params = params, 
+  data = dtrain, 
+  nrounds = nrounds, 
+  watchlist = list(train = dtrain, eval = dtest), 
+  early_stopping_rounds = 10,  # Stop if no improvement after 10 rounds
+  print_every_n = 10           # Print progress every 10 rounds
+)
+```
+The output from the model training shows the Root Mean Squared Error (RMSE) values at different stages of the XGBoost model training. At iteration 1, the training RMSE is 60.17 and the evaluation RMSE is 60.21. As training progresses, both the training and evaluation RMSE values decrease significantly. By iteration 11, the RMSE values drop to 21.17 for training and 21.26 for evaluation. Further improvements are observed, with the training RMSE reaching 1.90 and the evaluation RMSE reaching 2.52 by iteration 57. Early stopping is triggered at this point because the evaluation RMSE hasn't improved over the last 10 rounds. The best model is selected from iteration 57, where the lowest evaluation RMSE of 2.52 was recorded, indicating optimal performance at this stage.
+
+#### Model refinement: Cross Validation
+
+Again, to improve our XGBoost regressor, we will cross-validate it.
+
+```{r}
+# Define a grid of hyperparameters to search
+set.seed(42)
+
+tune_grid <- expand.grid(
+  eta = c(0.01, 0.05, 0.1),
+  max_depth = c(3, 6, 9),
+  subsample = c(0.7, 0.8, 1),
+  colsample_bytree = c(0.7, 0.8, 1),
+  gamma = c(0, 1, 5),         # Regularization parameter
+  min_child_weight = c(1, 3, 5),
+  nrounds = c(100, 200, 300)   # Boosting rounds
+)
+
+# Define a function to perform cross-validation
+xgb_cv <- function(eta, max_depth, subsample, colsample_bytree, gamma, min_child_weight, nrounds) {
+  params <- list(
+    objective = "reg:squarederror",
+    eval_metric = "rmse",
+    eta = eta,
+    max_depth = max_depth,
+    subsample = subsample,
+    colsample_bytree = colsample_bytree,
+    gamma = gamma,
+    min_child_weight = min_child_weight
+  )
+  
+  # Perform cross-validation
+  cv <- xgb.cv(
+    params = params,
+    data = dtrain,
+    nrounds = nrounds,
+    nfold = 5,                     # 5-fold cross-validation
+    early_stopping_rounds = 10,     # Stop if no improvement in 10 rounds
+    verbose = 0
+  )
+  
+  # Return the best RMSE from cross-validation
+  return(min(cv$evaluation_log$test_rmse_mean))
+}
+
+# Apply the cross-validation function to each combination of hyperparameters
+results <- apply(tune_grid, 1, function(params) {
+  xgb_cv(params['eta'], params['max_depth'], params['subsample'], 
+         params['colsample_bytree'], params['gamma'], params['min_child_weight'], 
+         params['nrounds'])
+})
+
+# Find the best set of hyperparameters
+best_index <- which.min(results)
+best_params <- tune_grid[best_index, ]
+cat("Best Parameters:\n")
+print(best_params)
+```
+
+This is the optimal set of hyperparameters found during the fine-tuning process for an XGBoost model. The learning rate (eta) is set to 0.05, which controls the step size at each iteration. The maximum depth of the trees (max_depth) is 3, indicating relatively shallow trees. The subsample ratio (subsample) is 0.7, meaning 70% of the training data is used to build each tree. The column sampling ratio (colsample_bytree) is 0.7, meaning 70% of the features are randomly selected for each tree. The regularization parameter (gamma) is set to 5, implying additional regularization on tree splits. The minimum sum of instance weights for a child node (min_child_weight) is 1, controlling overfitting by limiting the growth of small leaf nodes. Finally, the model was trained for 200 boosting rounds (nrounds).
+
+## Predicting the Test Dataset
+
+With all the models trained on the training data and fine-tuned, we can now proceed to evaluate their performance on the test dataset. By making predictions on the unseen test data, we are able to assess the models' generalization capabilities and compare their respective strengths and weaknesses.
+
+### Stepwise Regression
+
+We will start by creating the initial regression model. Subsequently, we will preprocess the data once more, employing the same techniques used during the training data preparation. This step, again, will involve identifying and removing outliers and influential points, ensuring the data meets the model assumptions.
+
+```{r}
+# Creating the initial test model
+linear_test_model <- lm(formula, data = test_set)
+```
+
+```{r}
+# Influential points: 
+
+# Calculate Cook's Distance
+test_cooksd <- cooks.distance(linear_test_model)
+
+# Set a threshold for Cook's Distance (4/n rule of thumb)
+test_cutoff <- 4 / nrow(test_set)
+
+# Identify influential points (those with Cook's Distance > cutoff)
+test_influential_points <- which(test_cooksd > test_cutoff)
+
+# Print the influential points
+print(test_influential_points)
+```
+
+```{r}
+# Remove influential points from the data
+linear_test_set <- test_set[-test_influential_points, ]
+
+# Refit the linear model without the influential points
+clean_linear_test_model <- lm(formula, data = linear_test_set)
+```
+
+```{r}
+# Outliers:
+
+# Calculate standardized residuals
+test_resid <- rstandard(clean_linear_test_model)
+
+# Identify observations with standardized residuals > 3 or < -3
+test_outliers <- which(abs(test_resid) > 3)
+
+# Print the outliers
+print(test_outliers)
+```
+
+```{r}
+# Remove outliers from the data
+linear_test_set <- linear_test_set[-test_outliers, ]
+
+# Refit the linear model without the outliers
+clean_linear_test_model <- lm(formula, data = linear_test_set)
+```
+
+```{r}
+# Perform stepwise selection
+test_linear_stepwise <- step(clean_linear_test_model, direction = "both")
+
+# View the selected model
+summary(test_linear_stepwise)
+```
+
+We will now proceed with the prediction.
+
+```{r}
+stepwise_prediction = predict(test_linear_stepwise, linear_test_set)
+
+# View the first few predicted values
+head(stepwise_prediction)
+```
+
+```{r}
+# Plot predicted vs actual values
+plot(linear_test_set$exam_score, stepwise_prediction,
+     main = "Predicted vs Actual Exam Scores (Stepwise Linear Regressor)",
+     xlab = "Actual Exam Scores", ylab = "Predicted Exam Scores",
+     pch = 19, col = "blue")
+
+# Add a y=x line for reference
+abline(0, 1, col = "red")
+```
+The plot shows the relationship between the predicted exam scores and the actual exam scores from our stepwise linear regression model. The red line represents the ideal scenario where predicted scores perfectly match the actual scores. The points closely follow the line, indicating that the model provides reasonably accurate predictions. However, there is some spread around the line, particularly at lower and higher exam scores, suggesting minor prediction errors. Overall, the model demonstrates a strong fit, with predicted scores aligning well with the actual scores.
+
+### Decision Tree Regressor
+
+We will now employ the Decision Tree Regressor algorithm to obtain predictions. In order to ensure optimal performance, we will utilize the pruned model derived from the cross-validation process.
+
+```{r}
+# Predict the target variable on the test data using the pruned model
+set.seed(42)
+dt_prediction <- predict(pruned_model, newdata = test_set)
+
+# View the first few predicted values
+head(dt_prediction)
+```
+
+```{r}
+# Plot predicted vs. actual values
+plot(test_set$exam_score, dt_prediction,
+     main = "Predicted vs Actual Exam Scores (Decision Tree)",
+     xlab = "Actual Exam Scores", ylab = "Predicted Exam Scores",
+     pch = 19, col = "blue")
+
+# Add a y=x line for reference
+abline(0, 1, col = "red")
+```
+
+The plot shows the relationship between the predicted exam scores and the actual exam scores from our decision tree model. Ideally, the points would lie along the red reference line, indicating perfect predictions where the predicted scores match the actual scores. However, the decision tree model's predictions are heavily concentrated between 64 and 72, regardless of the actual exam scores, suggesting that the model is not capturing the full range of score variability. It consistently underpredicts for higher actual exam scores (above 70), as the predicted values do not exceed 72, and it slightly overpredicts for lower exam scores (around 60).
+
+### Random Forest Regressor
+
+We will proceed with the Random Forest Regressor algorithm to obtain predictions. Again, in order to ensure optimal performance, we will utilize the final model derived from the cross-validation process. The `predict()` function on `rf_model` will automatically use the final model, which was trained with `mtry = 5`.
+
+```{r}
+# Predict the target variable on the test data using the best model
+set.seed(42)
+rf_prediction <- predict(rf, newdata = test_set)
+
+# View the first few predicted values
+head(rf_prediction)
+```
+
+```{r}
+# Plot predicted vs actual values
+plot(test_set$exam_score, rf_prediction,
+     main = "Predicted vs Actual Exam Scores (Random Forest)",
+     xlab = "Actual Exam Scores", ylab = "Predicted Exam Scores",
+     pch = 19, col = "blue")
+
+# Add a y=x line for reference
+abline(0, 1, col = "red")
+```
+
+The plot shows the relationship between the predicted exam scores and the actual exam scores from our random forest model. Ideally, if the model performed perfectly, all points would lie along the red diagonal line, which represents a perfect match between predicted and actual values. For actual exam scores between 60 and 75, the model seems to perform reasonably well, with predictions closely following the red line and showing a strong positive correlation with the actual scores. However, for higher actual scores (above 75), the model significantly underpredicts, as the predicted values remain below 75, even for actual scores that go beyond 80 and up to 100. 
+
+### Gradient Boosting Machine (XGBoost)
+
+We will continue with the XGBoost algorithm to obtain predictions. Again, in order to ensure optimal performance, we will utilize the final model derived from the cross-validation process.
+
+```{r}
+set.seed(42)
+
+# Best hyperparameters from cross-validation
+best_params <- list(
+  objective = "reg:squarederror",  # Objective for regression
+  eval_metric = "rmse",            # RMSE as the evaluation metric
+  eta = 0.05,                      # Learning rate from best params
+  max_depth = 3,                   # Max depth from best params
+  subsample = 0.7,                 # Subsample ratio from best params
+  colsample_bytree = 0.7,          # Colsample_bytree from best params
+  gamma = 5,                       # Gamma from best params
+  min_child_weight = 1             # Min child weight from best params
+)
+
+# Number of boosting rounds from best params
+best_nrounds <- 200
+
+# Train the final model using the best hyperparameters
+best_xgb_model <- xgb.train(
+  params = best_params,
+  data = dtrain,                   # Training data
+  nrounds = best_nrounds,          # Number of boosting rounds
+  watchlist = list(train = dtrain, eval = dtest),  # Optional: watch the evaluation set
+  early_stopping_rounds = 10,      # Early stopping
+  print_every_n = 10               # Print progress every 10 rounds
+)
+
+# Predict the target variable (e.g., exam_score) on the test data
+xgb_prediction <- predict(best_xgb_model, newdata = dtest)
+
+# View the first few predicted values
+head(xgb_prediction)
+```
+
+```{r}
+# Plot predicted vs actual values
+plot(test_set$exam_score, xgb_prediction,
+     main = "Predicted vs Actual Exam Scores (XGBoost)",
+     xlab = "Actual Exam Scores", ylab = "Predicted Exam Scores",
+     pch = 19, col = "blue")
+
+# Add a y=x line for reference
+abline(0, 1, col = "red")
+```
+
+The plot shows the relationship between the predicted exam scores and the actual exam scores from our XGBoost model. The red line represents the ideal scenario where predicted scores perfectly match the actual scores. While the model performs well for most students, particularly for scores between 60 and 75 where the points closely align with the line, it struggles with higher exam scores (above 80), where the predictions become less accurate and more dispersed. This suggests that the XGBoost model has difficulty predicting for high-achieving students, leading to underestimation of their scores. Overall, the model captures the general trend but shows limitations at the extremes.
+
+# Model Evaluation
+
+This study employed a rigorous data-driven approach to investigate the complex factors influencing student academic performance, as measured by exam scores. After thorough data preprocessing to handle missing data, outliers, and categorical variables, exploratory analysis identified initial patterns and relationships through visualizations. Based on these relationships, relevant features were carefully selected to capture predictive power. The dataset was then split into training and testing sets, and multiple regression models, including linear regression, decision trees, random forests, and gradient boosting, were developed and cross-validated for robustness. This systematic methodology lays the groundwork for model evaluation and interpretation, enabling the extraction of actionable insights to enhance student success and inform data-driven decision-making in educational contexts.
+
+Since the target variable `exam_scores` is numeric, `caret`'s `postResample` function will be used to evaluate model performance using root mean squared error (RMSE), R-squared, and mean absolute error (MAE). RMSE measures the square root of the average squared differences between predicted and actual values, placing greater emphasis on larger errors, making it useful when significant deviations are more concerning. R-squared quantifies the proportion of variance in the target variable explained by the model, offering insight into the model's explanatory power. Although adjusted R-squared is often preferred for accounting for model complexity, not all models provide adjusted R-squared in their output. Since we are using a fixed set of predictors across all models, we will rely on standard R-squared for comparison. MAE, on the other hand, measures the average absolute difference between predicted and actual values, providing a more interpretable metric by treating all errors equally.
+
+```{r}
+# Redefining the actual test for the linear regression
+actual_test  = test_set$exam_score
+actual_test_linear = linear_test_set$exam_score
+
+# Calculate performance metrics for each model using postResample
+stepwise_results <- postResample(pred = stepwise_prediction, obs = actual_test_linear)
+dt_results <- postResample(pred = dt_prediction, obs = actual_test)
+rf_results <- postResample(pred = rf_prediction, obs = actual_test)
+xgb_results <- postResample(pred = xgb_prediction, obs = actual_test)
+
+# Combine results into a data frame without repeating model names
+results_df <- data.frame(
+  Model = c("Stepwise Regression", "Decision Tree", "Random Forest", "XGBoost"),
+  RMSE = c(stepwise_results["RMSE"], dt_results["RMSE"], rf_results["RMSE"], xgb_results["RMSE"]),
+  R_squared = c(stepwise_results["Rsquared"], dt_results["Rsquared"], rf_results["Rsquared"], xgb_results["Rsquared"]),
+  MAE = c(stepwise_results["MAE"], dt_results["MAE"], rf_results["MAE"], xgb_results["MAE"])
+)
+
+# Print the basic table
+print(results_df)
+```
+
+It is important to note that since linear regression relies on assumptions like linearity and absence of outliers, the dataset was cleaned by removing influential points to meet these requirements. For other models like decision trees, random forests, and gradient boosting, the original dataset was utilized without this cleaning step to avoid potential biases from selective preprocessing. Additionally, all outliers and influential points detected seemed valid data points, representing actual high or low performers. However, this approach caused the linear regression model to be trained and tested in a different dataset than the other models. Therefore, comparing it with the other models remain tricky.
+
+To accurately assess the impact of data loss in linear regression, we merge the test and training datasets prior to value comparison. This consolidation allows us to comprehensively evaluate the extent of data attrition throughout the modeling process.
+
+```{r}
+# Combine the test and train datasets back
+linear_data <- rbind(linear_train_set, linear_test_set)
+
+# Compare the number of observations
+num_obs_data <- nrow(data)
+num_obs_linear_data <- nrow(linear_data)
+
+# Print the comparison as text
+cat("Number of observations\n")
+cat("For 'data' =", num_obs_data, "\n")
+cat("For 'linear_data' =", num_obs_linear_data, "\n")
+```
+
+```{r}
+# Check the target variable
+
+# For the "data" dataset
+cat("Summary of exam_score (data):\n")
+print(summary(data$exam_score), digits = 2)
+
+# For the "linear_data" dataset
+cat("\nSummary of exam_score (linear_data):\n")
+print(summary(linear_data$exam_score), digits = 2)
+```
+
+The `linear_data` contains 6,538 observations, compared to 6,606 in the `data`, with 68 data points removed, likely outliers or influential points. Focusing on the target variable `exam_score`, both datasets have similar central tendencies (means around 67), but the `linear_data` has a narrower range (55 to 79 vs. 55 to 100 in the normal dataset). This suggests that high-performing students were removed as outliers, which could improve the linear model's assumptions but may reduce its ability to predict extreme scores. Models trained on the `linear_data` will focus on more typical scores, potentially limiting their generalizability to high-performing students.
+
+When comparing the performance metrics (RMSE, R², and MAE) across different models, Stepwise Regression stands out with the lowest RMSE (1.05), the highest R² (0.90), and the lowest MAE (0.84), indicating it fits the data better and makes more accurate predictions compared to the other models. However, the strong performance of Stepwise Regression may be attributed to the cleaner, less variable dataset. In contrast, the Decision Tree performs the worst, with the highest RMSE (2.98), the lowest R² (0.43), and the highest MAE (1.83), suggesting it struggles to capture the complexity of the data. Both Random Forest and XGBoost perform better than the Decision Tree but still lag behind Stepwise Regression. However, XGBoost slightly edges out Random Forest with a lower RMSE (2.47 vs. 2.54) and higher R² (0.61 vs. 0.59), indicating it captures more variance and makes slightly more accurate predictions than Random Forest.
+
+Therefore, the Stepwise Regression model, excluding the high performing students, best reflects the performance of average students due to its strong metrics, with an RMSE of 1.05 and an R² of 0.90. Given its accuracy and ability to generalize well to typical student performance, we will proceed with this model to provide data-driven recommendations to school administrators, teachers, and parents. By analyzing feature importance within this model, we can offer actionable insights for enhancing student success. There is no need to conduct further analyses purely with the cleaned data, as the current performance metrics are already satisfactory, and we do not require a more complex model. The Stepwise Regression offers a robust foundation for making practical, data-backed decisions.
+
+In order to ensure that we fully represent the entire dataset, including both typical and outlier students, we will also perform a feature importance analysis using XGBoost. This will help us understand which factors influence performance across a broader spectrum of student outcomes. However, since our primary focus is on providing actionable recommendations for average students, our main insights and recommendations will be based on the Stepwise Regression model. This model, trained on data without any outliers or influential points, is more reflective of typical students and therefore offers more relevant insights for school administrators, teachers, and parents aiming to improve the academic performance of the majority of students.
+
+## Feature Importance for General
+
+To evaluate feature importance for the group without high achievers, we examine the coefficients derived from the stepwise regression model. However, it is crucial to note that since the predictor variables are scaled differently, directly comparing the coefficient magnitudes would be misleading. To ensure a meaningful comparison, we must standardize the coefficients by transforming them to a common scale.
+
+```{r}
+# Scaling the model 
+
+# Separate numeric and non-numeric columns
+numeric_vars <- sapply(linear_test_set, is.numeric)  # Identify numeric columns
+non_numeric_vars <- !numeric_vars  # Identify non-numeric columns
+
+# Scale only the numeric columns and leave non-numeric columns unchanged
+scaled_numerics <- scale(linear_test_set[, numeric_vars])
+
+# Convert it back to a data frame
+scaled_numerics <- as.data.frame(scaled_numerics)
+
+# Combine the scaled numeric columns with the non-numeric columns
+scaled_data <- cbind(scaled_numerics, linear_test_set[, non_numeric_vars])
+
+# Refit the model with the standardized numeric predictors and non-numeric variables
+stepwise_model_scaled <- lm(exam_score ~ attendance + hours_studied + previous_scores + 
+    EN_access_to_resources + tutoring_sessions + EN_parental_involvement, 
+    data = scaled_data)
+```
+
+```{r}
+# Visualise the standardized coefficients
+
+# Extract the coefficients and their p-values from the fitted model
+coefficients_scaled <- summary(stepwise_model_scaled)$coefficients
+
+# Remove the intercept and filter only significant predictors (p-value < 0.05)
+significant_predictors_scaled <- coefficients_scaled[rownames(coefficients_scaled) != "(Intercept)" & coefficients_scaled[, "Pr(>|t|)"] < 0.05, ]
+
+# Create a data frame with significant predictors
+coef_df_scaled <- data.frame(
+  Predictor = rownames(significant_predictors_scaled),
+  Estimate = significant_predictors_scaled[, "Estimate"]
+)
+
+# Plot the standardized coefficients for significant predictors
+ggplot(coef_df_scaled, aes(x = reorder(Predictor, Estimate), y = Estimate)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  coord_flip() +  # Flip the coordinates for better readability
+  labs(title = "Standardized Significant Predictors from Stepwise Regression",
+       x = "Predictor", y = "Standardized Coefficient (Impact on Exam Score)") +
+  theme_minimal()
+```
+
+The graph shows the standardized significant predictors from the Stepwise Regression model, ranked by their impact on exam scores. Attendance has the largest positive effect, followed closely by hours studied, indicating that these two factors are the most influential in predicting student performance. Parental involvement and access to resources also significantly contribute to higher exam scores, though to a lesser extent. Lastly, previous scores and tutoring sessions show moderate but still important positive effects. All these predictors positively influence exam scores, with attendance and study time being the strongest contributors.
+
+## Feature Importance for All
+
+To evaluate feature importance for all students in our group, we use XGBoost, as it showed superior performance compared to alternative modeling techniques.
+
+```{r}
+# Get the feature names from the model matrix (train_matrix)
+feature_names <- colnames(train_matrix)
+
+# Compute feature importance
+importance_matrix <- xgb.importance(feature_names = feature_names, model = xgb_model)
+
+# Plot the feature importance based on Gain
+xgb.plot.importance(importance_matrix)
+```
+
+Comparing this XGBoost feature importance graph to the previous linear regression feature importance graph, we see that attendance and hours studied remain the most influential predictors in both models, indicating their strong impact on exam scores regardless of whether high achievers are included. However, in the XGBoost model, previous scores rank higher in importance, whereas parental involvement and access to resources have diminished influence compared to the earlier model that excluded high achievers. This suggests that the inclusion of high achievers shifts the model's focus more towards academic factors (like previous performance) rather than external support factors (like parental involvement or access to resources).
+
+# Conclusion and Recommendations
+
+This study provides a comprehensive analysis of the key determinants influencing student exam scores, utilizing advanced data science techniques such as feature importance analysis and predictive modeling. Our findings underscore the critical role of attendance and hours studied as the most influential predictors of academic success, highlighting the importance of consistent school engagement and effective study habits. These factors were consistently significant across both linear and non-linear models, including stepwise regression and XGBoost, underscoring their robust impact on student performance.
+
+The inclusion of high achievers in the XGBoost model revealed additional insights, particularly the increased importance of previous scores as a predictor, suggesting that strong academic foundations play a pivotal role in future performance. However, the diminished influence of parental involvement and access to resources in the XGBoost model indicates that, for high achievers, academic factors outweigh external support, whereas for the broader student population, these external factors remain significant.
+
+Based on the statistical analysis, we tested the following hypotheses for each predictor:
+
+$H_0$: There is no significant relationship between the predictor variable and exam score.
+
+$H_a$: There is a significant relationship between the predictor variable and exam score.
+
+Given the results of the stepwise regression model, the null hypothesis is rejected for all predictors, confirming that these predictors have a significant relationship with exam scores. 
+
+Based on these findings, we provide the following data-driven recommendations for school administrators, teachers, and parents to improve student success:
+
+1.  Increase Student Attendance: Given the substantial impact of attendance on exam scores, schools should prioritize strategies to reduce absenteeism. This could involve implementing early warning systems to identify students with frequent absences and offering targeted interventions, such as counseling and parental engagement programs, to address the underlying causes.
+
+2.  Promote Effective Study Habits: Schools and teachers should provide structured guidance on effective study techniques, encouraging students to dedicate more hours to focused, high-quality study sessions. Workshops on time management, study skills, and test preparation could be beneficial in fostering these habits.
+
+3.  Use Historical Academic Performance: The correlation between previous scores and future exam performance suggests that early identification of struggling students is important Teachers and school staff should closely monitor academic performance over time and provide additional support to students falling behind, such as personalized tutoring or remedial classes.
+
+4.  Foster Parental Involvement: Although parental involvement showed a smaller impact in the XGBoost model, it remains an important predictor in the broader student population. Schools should continue to engage parents through regular communication, parent-teacher conferences, and involvement in school activities to create an environment of academic support at home.
+
+5.  Target Resource Allocation: Ensuring equitable access to educational resources, particularly for students from disadvantaged backgrounds, remains critical for improving exam scores. Schools can facilitate access to necessary materials, study environments, and extracurricular support programs, particularly for students identified as at-risk.
+
+By implementing these recommendations, educational institutions can take a proactive, data-driven approach to mitigating educational inequalities and creating an environment that supports academic success for all students. Through early interventions and personalized support, schools can improve long-term outcomes, contributing to greater social mobility and societal progress.
+
+# References
+
+-   Cheema, J. R. (2014). A review of missing data handling methods in education research. Review of Educational Research, 84(4), 487-508.
+
+-   Cook, R. D. (1977). Detection of influential observation in linear regression. Technometrics, 19(1), 15-18.
+
+-   Cook, R. D., & Weisberg, S. (1982). Residuals and influence in regression. New York: Chapman and Hall.
+
+-   Farooq, M. S., Chaudhry, A. H., Shafiq, M., & Berhanu, G. (2011). Factors affecting students' quality of academic performance: a case of secondary school level. Journal of quality and technology management, 7(2), 1-14.
+
+-   García, S., Luengo, J., & Herrera, F. (2015). Data preprocessing in data mining. Springer.
+
+-   Hanushek, E. A., & Woessmann, L. (2017). School resources and student achievement: A review of cross-country economic research. In Cognitive Abilities and Educational Outcomes (pp. 149-171). Springer, Cham.
+
+-   Hellas, A., Ihantola, P., Petersen, A., Ajanovski, V. V., Gutica, M., Hynninen, T., ... & Liao, S. N. (2018). Predicting academic performance: a systematic literature review. In Proceedings companion of the 23rd annual ACM conference on innovation and technology in computer science education (pp. 175-199).
+
+-   Hussain, M., Zhu, W., Zhang, W., & Abidi, S. M. R. (2018). Student engagement predictions in an e-learning system and their impact on student course assessment scores. Computational Intelligence and Neuroscience, 2018.
+
+-   Larose, D.T., & Larose, C. D. (2014). Discovering knowledge in data: an introduction to data mining. John Wiley & Sons.
+
+-   Micci-Barreca, D. (2001, July). A preprocessing scheme for high-cardinality categorical attributes in classification and prediction problems. ACM SIGKDD Explorations Newsletter, 3(1), 27-32.
+
+-   Mushtaq, I., & Khan, S. N. (2012). Factors affecting students' academic performance. Global Journal of Management and Business Research, 12(9), 17-22.
+
+-   Ou, S. R., & Reynolds, A. J. (2008). Predictors of educational attainment in the Chicago Longitudinal Study. School Psychology Quarterly, 23(2), 199-229.
+
+-   Sackett, P. R., Kuncel, N. R., Arneson, J. J., Cooper, S. R., & Waters, S. D. (2009). Does socioeconomic status explain the relationship between admissions tests and post-secondary academic performance?. Psychological Bulletin, 135(1), 1-22.
+
+-   Steinmayr, R., Meißner, A., Weidinger, A. F., & Wirthwein, L. (2015). Academic achievement. Oxford Bibliographies Online Datasets.
+
+-   Stevens, J. P. (1984). Outliers and influential data points in regression analysis. Psychological Bulletin, 95(2), 334-344.
+
+-   United Nations. (2015). Transforming our world: The 2030 agenda for sustainable development. United Nations, New York.
+
+-   York, T. T., Gibson, C., & Rankin, S. (2015). Defining and measuring academic success. Practical Assessment, Research, and Evaluation, 20(1), 5.
