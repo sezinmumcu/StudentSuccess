@@ -17,6 +17,9 @@ Using advanced data science techniques, we analyze a comprehensive dataset to pr
 - Feature importance analysis
 - Data-driven recommendations for educators and policymakers
 
+_The Decision Tree_:
+![Unknown-2](https://github.com/user-attachments/assets/9b3e95c3-3c2a-4a1e-8695-c60710f52034)
+
 ## Methodology
 
 1. Data Preparation: Cleaning, handling missing values, encoding categorical variables
@@ -25,6 +28,11 @@ Using advanced data science techniques, we analyze a comprehensive dataset to pr
 4. Model Evaluation: Comparing performance using RMSE, R-squared, and MAE
 5. Feature Importance Analysis: Identifying key predictors of academic success
 6. Insights and Recommendations: Translating findings into actionable strategies
+
+_Example visuals from the EDA_:
+![Unknown](https://github.com/user-attachments/assets/f29a8742-7cdc-4adb-9e17-83574e5e4ea1)
+
+![Unknown-1](https://github.com/user-attachments/assets/ec311fbd-df2e-4e1c-83a0-5ff2bb8f8554)
 
 ## Key Findings
 
